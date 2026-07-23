@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vokabel-Laufband</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;touch-action:none;user-select:none}
+body{background:linear-gradient(#4aa9ff 0%,#b9e5ff 66%,#eaf8ff 100%)}
+#game{position:relative;width:100vw;height:100vh;overflow:hidden}
+.horizon{position:absolute;top:7%;left:0;right:0;height:18px;background:#2f7c24;box-shadow:0 5px 0 rgba(0,0,0,.14)}
+.road{
+ position:absolute;left:50%;top:6%;width:76%;height:110%;transform:translateX(-50%);
+ clip-path:polygon(44% 0,56% 0,100% 100%,0 100%);
+ background:
+ linear-gradient(90deg,transparent 49.55%,rgba(220,225,230,.9) 49.55%,rgba(220,225,230,.9) 50.45%,transparent 50.45%),
+ repeating-linear-gradient(0deg,#fff 0 70px,#f3f3f3 70px 76px);
+}
+.rail{position:absolute;top:7%;bottom:-8%;width:6px;background:#68737e;box-shadow:0 0 0 2px #9aa3ad;transform-origin:top}
+.rail.left{left:29%;transform:rotate(18deg)}
+.rail.right{right:29%;transform:rotate(-18deg)}
+.hud{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;z-index:40}
+.badge{background:linear-gradient(#70849f,#34445b);color:#fff;border:3px solid rgba(255,255,255,.35);border-radius:16px;padding:10px 20px;font-size:clamp(18px,2.2vw,31px);font-weight:900;text-shadow:0 2px 0 #000;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+#money{min-width:170px;text-align:center;color:#ffd34f}
+.questionBox{position:absolute;top:14%;left:50%;transform:translateX(-50%);z-index:35;width:min(760px,88vw);background:rgba(255,255,255,.95);border:4px solid #465b74;border-radius:20px;text-align:center;padding:13px 20px;box-shadow:0 10px 28px rgba(0,0,0,.25)}
+.questionBox small{font-weight:900;color:#4d617b}
+#question{font-size:clamp(24px,3.8vw,48px);font-weight:1000;margin-top:3px}
+.timer{position:absolute;top:calc(14% + 120px);left:50%;transform:translateX(-50%);z-index:36;width:min(650px,76vw);height:15px;background:rgba(255,255,255,.8);border:3px solid #465b74;border-radius:10px;overflow:hidden}
+#timerBar{height:100%;width:100%;transform-origin:left;background:linear-gradient(90deg,#3bd45c,#f0db45,#ff5f5f)}
+.answer-row{position:absolute;left:50%;top:35%;transform:translateX(-50%);width:min(920px,78vw);height:180px;z-index:20;display:flex;gap:34px;pointer-events:none}
+.gate{position:relative;flex:1;border:5px solid rgba(255,255,255,.95);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:clamp(20px,2.5vw,36px);font-weight:1000;color:#18222c;box-shadow:0 12px 28px rgba(0,0,0,.23);overflow:hidden}
+.gate.left{background:linear-gradient(#e0f3ff,#74c8ff)}
+.gate.right{background:linear-gradient(#ffe4e1,#ff958d)}
+.gate.correct{background:linear-gradient(#d9ffd9,#5cdd69)!important}
+.gate.wrong{background:linear-gradient(#ffd8d8,#ff5a5a)!important}
+.gate.shatter{animation:gatePop .24s forwards}
+@keyframes gatePop{to{transform:scale(1.12);opacity:0;filter:brightness(1.5)}}
+.ball{position:absolute;left:50%;bottom:10%;transform:translateX(-50%);z-index:30;width:clamp(68px,8vw,112px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 32% 27%,#fff 0 7%,#8be8ff 9%,#1f9cda 35%,#0e5a98 66%,#062e58 100%);box-shadow:0 16px 22px rgba(0,0,0,.28),inset -14px -18px 20px rgba(0,0,0,.2);transition:left .18s ease}
+.ball::after{content:"";position:absolute;left:17%;right:17%;bottom:-19px;height:16px;border-radius:50%;background:rgba(0,0,0,.2);filter:blur(4px)}
+.ball.rolling{animation:roll .5s linear infinite}
+@keyframes roll{from{transform:translateX(-50%) rotate(0)}to{transform:translateX(-50%) rotate(360deg)}}
+.particle{position:absolute;z-index:50;width:18px;height:18px;border-radius:3px;pointer-events:none;animation:fly .7s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+#feedback{position:absolute;left:50%;top:63%;transform:translateX(-50%);z-index:60;font-size:clamp(30px,5vw,64px);font-weight:1000;text-shadow:0 4px 0 #fff,0 8px 10px rgba(0,0,0,.25);opacity:0}
+#feedback.show{animation:feedback .8s ease}
+@keyframes feedback{0%{opacity:0;transform:translateX(-50%) scale(.7)}20%,75%{opacity:1;transform:translateX(-50%) scale(1.06)}100%{opacity:0}}
+.progress{position:absolute;left:12px;bottom:12px;width:220px;height:22px;border:3px solid #3b4a5e;background:rgba(255,255,255,.75);border-radius:12px;overflow:hidden;z-index:45}
+#progressBar{height:100%;width:0;background:linear-gradient(90deg,#40d85c,#b4f25d)}
+.hint{position:absolute;right:14px;bottom:12px;z-index:45;background:rgba(255,255,255,.76);padding:8px 12px;border-radius:11px;font-weight:800;color:#2d3c50}
+.overlay{position:absolute;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(18,39,70,.74)}
+.panel{width:min(590px,90vw);background:white;border-radius:25px;padding:30px;text-align:center;box-shadow:0 22px 65px rgba(0,0,0,.36)}
+.panel h1{margin:0 0 10px;font-size:clamp(31px,5vw,56px)}
+.panel p{font-size:19px;line-height:1.5}
+button{border:0;border-radius:16px;padding:14px 24px;background:#4bd667;font-size:24px;font-weight:1000;box-shadow:0 6px 0 rgba(0,0,0,.24);cursor:pointer}
+button:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.24)}
+.hidden{display:none}
+@media(max-width:700px){
+ .questionBox{top:12%}
+ .timer{top:calc(12% + 112px)}
+ .answer-row{width:88vw;height:145px;gap:18px;top:37%}
+ .gate{padding:10px;font-size:clamp(18px,4.8vw,28px)}
+ .rail.left{left:18%}.rail.right{right:18%}
+ .ball{bottom:13%}
+ .progress{width:145px;height:19px}
+ .hint{display:none}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div class="horizon"></div>
+ <div class="road"></div>
+ <div class="rail left"></div>
+ <div class="rail right"></div>
+
+ <div class="hud">
+   <div class="badge" id="level">LEVEL 1</div>
+   <div class="badge" id="money">0 €</div>
+   <div style="font-size:46px">💵</div>
+ </div>
+
+ <div class="questionBox">
+   <small>WISCHE ZUR RICHTIGEN ÜBERSETZUNG</small>
+   <div id="question">el tiempo libre</div>
+ </div>
+ <div class="timer"><div id="timerBar"></div></div>
+
+ <div class="answer-row" id="answerRow">
+   <div class="gate left" id="leftGate"></div>
+   <div class="gate right" id="rightGate"></div>
+ </div>
+
+ <div class="ball rolling" id="ball"></div>
+ <div id="feedback"></div>
+
+ <div class="progress"><div id="progressBar"></div></div>
+ <div class="hint">Wischen oder ← →</div>
+
+ <div class="overlay" id="startOverlay">
+   <div class="panel">
+     <h1>🔵 Vokabel-Laufband</h1>
+     <p>Die Antworten kommen langsam auf dich zu. Wische nach links oder rechts und bringe die Kugel in die richtige Spur.</p>
+     <p>Beim Zusammenstoß zerbricht die gewählte Antwort. Danach kommt automatisch die nächste Frage.</p>
+     <button id="startBtn">SPIEL STARTEN</button>
+   </div>
+ </div>
+
+ <div class="overlay hidden" id="endOverlay">
+   <div class="panel">
+     <h1 id="endTitle">🏁 Geschafft!</h1>
+     <p id="endText"></p>
+     <button id="restartBtn">NOCHMAL SPIELEN</button>
+   </div>
+ </div>
+</div>
+
+<script>
+const vocab=[
+["español / española","spanisch"],["el tiempo libre","die Freizeit"],["el tiempo","die Zeit / das Wetter"],
+["libre","frei"],["salir","ausgehen"],["escuchar algo / a alguien","etwas / jemandem zuhören"],
+["la música","die Musik"],["viajar","reisen"],["usar algo","etwas benutzen"],
+["ver algo / a alguien","etwas / jemanden sehen"],["la televisión","der Fernseher"],
+["el concierto","das Konzert"],["la radio","das Radio"],["el bar","die Bar / Kneipe"],
+["el periódico","die Zeitung"],["la revista","die Zeitschrift"],["la exposición","die Ausstellung"],
+["jugar con / a algo","mit etwas spielen"],["el videojuego","das Videospiel"],
+["a mí me gusta","mir gefällt / ich mag"],["no me gusta nada","ich mag überhaupt nicht"],
+["¿te gusta...?","magst du ...?"],["a mí también","ich auch"],["tampoco","auch nicht"],
+["el fútbol","Fußball"],["los domingos","sonntags"],["tocar un instrumento","ein Instrument spielen"],
+["la guitarra","die Gitarre"],["ir al cine","ins Kino gehen"],["hacer deporte","Sport machen"]
+];
+
+const ROUND_TIME=7000;
+let questions=[],index=0,money=0,locked=false,correctSide="left",selectedSide="left";
+let roundStart=0,raf=null,startX=0,startY=0;
+
+const game=document.getElementById("game");
+const row=document.getElementById("answerRow");
+const ball=document.getElementById("ball");
+const leftGate=document.getElementById("leftGate");
+const rightGate=document.getElementById("rightGate");
+const timerBar=document.getElementById("timerBar");
+const feedback=document.getElementById("feedback");
+
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+function startGame(){
+ questions=shuffle(vocab).slice(0,15);index=0;money=0;
+ document.getElementById("startOverlay").classList.add("hidden");
+ document.getElementById("endOverlay").classList.add("hidden");
+ updateHud();loadQuestion();
+}
+function updateHud(){
+ document.getElementById("money").textContent=money.toLocaleString("de-DE")+" €";
+ document.getElementById("level").textContent="LEVEL "+(Math.floor(index/5)+1);
+ document.getElementById("progressBar").style.width=(index/questions.length*100)+"%";
+}
+function randomWrong(correct){
+ const a=vocab.map(v=>v[1]).filter(x=>x!==correct);
+ return a[Math.floor(Math.random()*a.length)];
+}
+function setLane(side){
+ if(locked)return;
+ selectedSide=side;
+ ball.style.left=side==="left"?"38%":"62%";
+}
+function loadQuestion(){
+ cancelAnimationFrame(raf);locked=false;selectedSide=Math.random()<.5?"left":"right";
+ ball.style.left=selectedSide==="left"?"38%":"62%";
+ row.style.top="29%";row.style.transform="translateX(-50%) scale(.48)";
+ row.style.opacity="0.72";
+ leftGate.className="gate left";rightGate.className="gate right";
+ const [spanish,german]=questions[index];
+ document.getElementById("question").textContent=spanish;
+ const wrong=randomWrong(german);
+ correctSide=Math.random()<.5?"left":"right";
+ if(correctSide==="left"){leftGate.textContent=german;rightGate.textContent=wrong}
+ else{leftGate.textContent=wrong;rightGate.textContent=german}
+ roundStart=performance.now();
+ raf=requestAnimationFrame(animateBelt);
+}
+function animateBelt(now){
+ if(locked)return;
+ const p=Math.min((now-roundStart)/ROUND_TIME,1);
+ timerBar.style.transform=`scaleX(${1-p})`;
+ const top=29+35*p;
+ const scale=.48+.52*p;
+ row.style.top=top+"%";
+ row.style.transform=`translateX(-50%) scale(${scale})`;
+ row.style.opacity=.72+.28*p;
+ if(p>=1){collide();return}
+ raf=requestAnimationFrame(animateBelt);
+}
+function collide(){
+ if(locked)return;
+ locked=true;cancelAnimationFrame(raf);
+ const chosen=selectedSide==="left"?leftGate:rightGate;
+ const right=selectedSide===correctSide;
+ chosen.classList.add(right?"correct":"wrong");
+ if(!right)(correctSide==="left"?leftGate:rightGate).classList.add("correct");
+ shatter(chosen,selectedSide,right);
+ money=Math.max(0,money+(right?1000+index*250:-500));
+ showFeedback(right?"✅ RICHTIG!":"❌ FALSCH!",right?"#178d31":"#cf2222");
+ updateHud();
+ setTimeout(nextQuestion,950);
+}
+function shatter(el,side,right){
+ const r=el.getBoundingClientRect();
+ const color=right?"#62dc6b":(side==="left"?"#75c9ff":"#ff928a");
+ for(let i=0;i<26;i++){
+   const p=document.createElement("div");
+   p.className="particle";
+   p.style.left=(r.left+r.width/2+(Math.random()-.5)*r.width*.7)+"px";
+   p.style.top=(r.top+r.height/2+(Math.random()-.5)*r.height*.7)+"px";
+   p.style.background=color;
+   p.style.setProperty("--dx",((Math.random()-.5)*280)+"px");
+   p.style.setProperty("--dy",((-50-Math.random()*220))+"px");
+   p.style.setProperty("--rot",((Math.random()*720-360)+"deg"));
+   game.appendChild(p);
+   setTimeout(()=>p.remove(),750);
+ }
+ el.classList.add("shatter");
+}
+function showFeedback(text,color){
+ feedback.textContent=text;feedback.style.color=color;
+ feedback.classList.remove("show");void feedback.offsetWidth;feedback.classList.add("show");
+}
+function nextQuestion(){
+ index++;updateHud();
+ if(index>=questions.length){
+   document.getElementById("progressBar").style.width="100%";
+   document.getElementById("endText").innerHTML=`Du hast <b>${money.toLocaleString("de-DE")} €</b> gesammelt.`;
+   document.getElementById("endOverlay").classList.remove("hidden");
+ }else loadQuestion();
+}
+
+document.getElementById("startBtn").onclick=startGame;
+document.getElementById("restartBtn").onclick=startGame;
+document.addEventListener("keydown",e=>{
+ if(e.key==="ArrowLeft")setLane("left");
+ if(e.key==="ArrowRight")setLane("right");
+});
+game.addEventListener("pointerdown",e=>{startX=e.clientX;startY=e.clientY});
+game.addEventListener("pointerup",e=>{
+ const dx=e.clientX-startX,dy=e.clientY-startY;
+ if(Math.abs(dx)>35&&Math.abs(dx)>Math.abs(dy))setLane(dx<0?"left":"right");
+ else if(e.clientX<innerWidth/2)setLane("left");else setLane("right");
+});
+</script>
+</body>
+</html>
