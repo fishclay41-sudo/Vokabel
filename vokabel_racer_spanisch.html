@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vokabel-Autorennen – Spanisch</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, Helvetica, sans-serif; }
+  body {
+    background: linear-gradient(#41a5ff 0%, #bfe7ff 62%, #e9f7ff 100%);
+    user-select: none;
+  }
+  #game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .horizon {
+    position: absolute; top: 5.8%; left: 0; right: 0; height: 18px;
+    background: #347a23; box-shadow: 0 4px 0 rgba(0,0,0,.18);
+  }
+  .road {
+    position: absolute;
+    left: 50%; top: 5%;
+    width: 70%; height: 100%;
+    transform: translateX(-50%);
+    clip-path: polygon(43% 0, 57% 0, 100% 100%, 0 100%);
+    background:
+      linear-gradient(90deg, transparent 49.4%, rgba(255,255,255,.75) 49.4%, rgba(255,255,255,.75) 50.6%, transparent 50.6%),
+      linear-gradient(#fafafa, #fff);
+  }
+  .rail {
+    position: absolute; top: 6%; bottom: 0; width: 5px; background: #64707b;
+    box-shadow: 0 0 0 2px #8f99a5;
+    transform-origin: top;
+  }
+  .rail.left { left: 28.5%; transform: rotate(18deg); }
+  .rail.right { right: 28.5%; transform: rotate(-18deg); }
+  .hud {
+    position: absolute; top: 22px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 18px; align-items: center; z-index: 20;
+  }
+  .badge {
+    background: linear-gradient(#6a7d97,#35445a);
+    color: white; border: 3px solid rgba(255,255,255,.35);
+    border-radius: 14px; padding: 10px 18px; font-weight: 900; font-size: clamp(18px,2vw,30px);
+    text-shadow: 0 2px 0 #000; box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  }
+  #money { min-width: 170px; text-align: center; color: #ffd24d; }
+  .moneyIcon { font-size: clamp(30px,4vw,54px); filter: drop-shadow(0 3px 0 #145e21); }
+  .questionBox {
+    position: absolute; top: 13%; left: 50%; transform: translateX(-50%);
+    z-index: 15; width: min(760px, 88vw); text-align: center;
+    background: rgba(255,255,255,.92); border: 4px solid #465b74; border-radius: 18px;
+    padding: 14px 20px; box-shadow: 0 8px 25px rgba(0,0,0,.25);
+  }
+  .questionBox small { color: #465b74; font-weight: 700; }
+  #question { font-size: clamp(22px,3.4vw,42px); font-weight: 900; margin-top: 4px; }
+  .gate {
+    position: absolute; top: 33%; width: 29%; min-height: 150px; z-index: 10;
+    border: 4px solid rgba(255,255,255,.9); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 18px; font-size: clamp(18px,2.5vw,34px); font-weight: 900;
+    color: #15202a; box-shadow: 0 8px 20px rgba(0,0,0,.18);
+    transition: transform .2s, filter .2s, opacity .25s;
+  }
+  .gate.left { left: 20%; background: linear-gradient(#dff2ff,#78c8ff); }
+  .gate.right { right: 20%; background: linear-gradient(#ffe3e0,#ff9990); }
+  .gate.active { transform: scale(1.06); filter: brightness(1.08); }
+  .gate.correct { background: linear-gradient(#d9ffd8,#65dc69) !important; }
+  .gate.wrong { background: linear-gradient(#ffd9d9,#ff5f5f) !important; }
+  .car {
+    position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%);
+    z-index: 16; width: clamp(120px,17vw,260px); height: clamp(70px,10vw,150px);
+    transition: left .18s ease-out, bottom .4s ease-in, transform .18s;
+  }
+  .carBody {
+    position: absolute; inset: 22% 4% 12% 4%; border-radius: 26% 32% 18% 18%;
+    background: linear-gradient(155deg,#48515b,#121820 60%,#05070a);
+    border: 4px solid #2a323b; box-shadow: 0 12px 15px rgba(0,0,0,.25);
+  }
+  .carCabin {
+    position: absolute; left: 30%; top: 7%; width: 45%; height: 42%;
+    background: linear-gradient(#93b6cf,#263b4a); border: 4px solid #1d232a;
+    clip-path: polygon(15% 100%, 28% 0, 78% 0, 100% 100%);
+  }
+  .stripe { position: absolute; left: 46%; top: 8%; bottom: 12%; width: 9%; background: #f4f4f4; opacity: .9; }
+  .wheel {
+    position: absolute; bottom: 2%; width: 22%; aspect-ratio: 1; border-radius: 50%;
+    background: radial-gradient(circle,#8d969e 0 28%,#1d2328 30% 68%,#050607 70%);
+    border: 3px solid #15191d;
+  }
+  .wheel.w1 { left: 13%; } .wheel.w2 { right: 10%; }
+  .controls {
+    position: absolute; left: 50%; bottom: 2.5%; transform: translateX(-50%);
+    z-index: 30; display: flex; gap: 18px;
+  }
+  button {
+    border: 0; border-radius: 16px; padding: 14px 24px;
+    font-size: clamp(17px,2vw,25px); font-weight: 900; cursor: pointer;
+    box-shadow: 0 6px 0 rgba(0,0,0,.25); transition: transform .08s;
+  }
+  button:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  #leftBtn { background: #56bfff; } #rightBtn { background: #ff7f76; }
+  .progress {
+    position: absolute; bottom: 10px; left: 10px; width: 230px; height: 24px;
+    background: rgba(255,255,255,.7); border: 3px solid #3b4a5e; border-radius: 12px; overflow: hidden; z-index: 25;
+  }
+  #progressBar { height: 100%; width: 0%; background: linear-gradient(90deg,#41d95d,#b4f35f); transition: width .3s; }
+  #feedback {
+    position: absolute; top: 61%; left: 50%; transform: translateX(-50%);
+    z-index: 40; font-size: clamp(28px,5vw,62px); font-weight: 1000;
+    text-shadow: 0 4px 0 #fff, 0 7px 8px rgba(0,0,0,.25); opacity: 0;
+    transition: opacity .15s, transform .2s;
+  }
+  #feedback.show { opacity: 1; transform: translateX(-50%) scale(1.08); }
+  .overlay {
+    position: absolute; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    background: rgba(16,39,71,.72);
+  }
+  .panel {
+    width: min(560px, 90vw); background: white; border-radius: 24px; padding: 28px;
+    text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .panel h1 { margin: 0 0 10px; font-size: clamp(30px,5vw,55px); }
+  .panel p { font-size: 19px; line-height: 1.45; }
+  #startBtn, #restartBtn { background: #49d665; font-size: 25px; }
+  .hidden { display: none; }
+  .hint { position:absolute; right: 14px; bottom: 12px; z-index:25; font-weight:700; color:#26364a; background:rgba(255,255,255,.7); padding:7px 11px; border-radius:10px; }
+  @media (max-width: 700px) {
+    .gate { top: 38%; width: 39%; min-height: 125px; padding: 10px; }
+    .gate.left { left: 8%; } .gate.right { right: 8%; }
+    .questionBox { top: 12%; }
+    .car { bottom: 18%; }
+    .rail.left { left: 18%; } .rail.right { right: 18%; }
+    .controls { bottom: 5%; }
+    .progress { width: 150px; bottom: 8px; }
+    .hint { display:none; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="horizon"></div>
+  <div class="road"></div>
+  <div class="rail left"></div>
+  <div class="rail right"></div>
+
+  <div class="hud">
+    <div class="badge" id="level">LEVEL 1</div>
+    <div class="badge" id="money">0 €</div>
+    <div class="moneyIcon">💵</div>
+  </div>
+
+  <div class="questionBox">
+    <small>FAHRE DURCH DIE RICHTIGE ÜBERSETZUNG</small>
+    <div id="question">el tiempo libre</div>
+  </div>
+
+  <div class="gate left" id="leftGate"></div>
+  <div class="gate right" id="rightGate"></div>
+
+  <div class="car" id="car">
+    <div class="carBody"></div>
+    <div class="carCabin"></div>
+    <div class="stripe"></div>
+    <div class="wheel w1"></div>
+    <div class="wheel w2"></div>
+  </div>
+
+  <div id="feedback"></div>
+
+  <div class="controls">
+    <button id="leftBtn">⬅ LINKS</button>
+    <button id="rightBtn">RECHTS ➡</button>
+  </div>
+
+  <div class="progress"><div id="progressBar"></div></div>
+  <div class="hint">Tastatur: ← und →</div>
+
+  <div class="overlay" id="startOverlay">
+    <div class="panel">
+      <h1>🚗 Vokabel-Racer</h1>
+      <p>Fahre mit dem Auto durch die richtige deutsche Übersetzung. Richtige Antworten bringen Geld, falsche kosten Geld.</p>
+      <p><b>Steuerung:</b> Pfeiltasten oder Buttons.</p>
+      <button id="startBtn">SPIEL STARTEN</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="endOverlay">
+    <div class="panel">
+      <h1 id="endTitle">Ziel erreicht!</h1>
+      <p id="endText"></p>
+      <button id="restartBtn">NOCHMAL SPIELEN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const vocab = [
+  ["español / española", "spanisch"],
+  ["el tiempo libre", "die Freizeit"],
+  ["el tiempo", "die Zeit / das Wetter"],
+  ["libre", "frei"],
+  ["salir", "ausgehen"],
+  ["escuchar algo / a alguien", "etwas / jemandem zuhören"],
+  ["la música", "die Musik"],
+  ["viajar", "reisen"],
+  ["usar algo", "etwas benutzen"],
+  ["ver algo / a alguien", "etwas / jemanden sehen"],
+  ["la televisión", "der Fernseher"],
+  ["el concierto", "das Konzert"],
+  ["la radio", "das Radio"],
+  ["el bar", "die Bar / Kneipe"],
+  ["el periódico", "die Zeitung"],
+  ["la revista", "die Zeitschrift"],
+  ["la exposición", "die Ausstellung"],
+  ["jugar con / a algo", "mit etwas spielen"],
+  ["el videojuego", "das Videospiel"],
+  ["a mí me gusta", "mir gefällt / ich mag"],
+  ["no me gusta nada", "ich mag überhaupt nicht"],
+  ["¿te gusta...?", "magst du ...?"],
+  ["a mí también", "ich auch"],
+  ["tampoco", "auch nicht"],
+  ["el fútbol", "Fußball"],
+  ["los domingos", "sonntags"],
+  ["tocar un instrumento", "ein Instrument spielen"],
+  ["la guitarra", "die Gitarre"],
+  ["ir al cine", "ins Kino gehen"],
+  ["hacer deporte", "Sport machen"]
+];
+
+let questions = [];
+let index = 0;
+let money = 0;
+let locked = false;
+let correctSide = "left";
+
+const qEl = document.getElementById("question");
+const leftGate = document.getElementById("leftGate");
+const rightGate = document.getElementById("rightGate");
+const car = document.getElementById("car");
+const feedback = document.getElementById("feedback");
+const moneyEl = document.getElementById("money");
+const levelEl = document.getElementById("level");
+const progressBar = document.getElementById("progressBar");
+
+function shuffle(a) {
+  return [...a].sort(() => Math.random() - 0.5);
+}
+function startGame() {
+  questions = shuffle(vocab).slice(0, 15);
+  index = 0; money = 0; locked = false;
+  document.getElementById("startOverlay").classList.add("hidden");
+  document.getElementById("endOverlay").classList.add("hidden");
+  updateHud();
+  loadQuestion();
+}
+function updateHud() {
+  moneyEl.textContent = money.toLocaleString("de-DE") + " €";
+  levelEl.textContent = "LEVEL " + (Math.floor(index / 5) + 1);
+  progressBar.style.width = (index / questions.length * 100) + "%";
+}
+function randomWrong(correct) {
+  const choices = vocab.map(v => v[1]).filter(x => x !== correct);
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+function loadQuestion() {
+  locked = false;
+  car.style.left = "50%";
+  car.style.bottom = "14%";
+  leftGate.className = "gate left";
+  rightGate.className = "gate right";
+  const [spanish, german] = questions[index];
+  qEl.textContent = spanish;
+  const wrong = randomWrong(german);
+  correctSide = Math.random() < .5 ? "left" : "right";
+  if (correctSide === "left") {
+    leftGate.textContent = german;
+    rightGate.textContent = wrong;
+  } else {
+    leftGate.textContent = wrong;
+    rightGate.textContent = german;
+  }
+}
+function choose(side) {
+  if (locked) return;
+  locked = true;
+  car.style.left = side === "left" ? "37%" : "63%";
+  document.getElementById(side + "Gate").classList.add("active");
+  const isCorrect = side === correctSide;
+  setTimeout(() => {
+    car.style.bottom = "42%";
+    if (isCorrect) {
+      money += 1000 + index * 250;
+      document.getElementById(side + "Gate").classList.add("correct");
+      showFeedback("✅ RICHTIG!", "#168c2d");
+    } else {
+      money = Math.max(0, money - 500);
+      document.getElementById(side + "Gate").classList.add("wrong");
+      document.getElementById(correctSide + "Gate").classList.add("correct");
+      showFeedback("❌ FALSCH!", "#cf2222");
+    }
+    updateHud();
+    setTimeout(nextQuestion, 900);
+  }, 260);
+}
+function showFeedback(text, color) {
+  feedback.textContent = text;
+  feedback.style.color = color;
+  feedback.classList.add("show");
+  setTimeout(() => feedback.classList.remove("show"), 720);
+}
+function nextQuestion() {
+  index++;
+  updateHud();
+  if (index >= questions.length) {
+    progressBar.style.width = "100%";
+    document.getElementById("endTitle").textContent = money >= 12000 ? "🏆 Super gefahren!" : "🏁 Ziel erreicht!";
+    document.getElementById("endText").innerHTML =
+      `Du hast <b>${money.toLocaleString("de-DE")} €</b> gesammelt.<br><br>` +
+      (money >= 12000 ? "Sehr stark – deine Vokabeln sitzen!" : "Noch eine Runde und du wirst schneller!");
+    document.getElementById("endOverlay").classList.remove("hidden");
+  } else {
+    loadQuestion();
+  }
+}
+
+document.getElementById("leftBtn").onclick = () => choose("left");
+document.getElementById("rightBtn").onclick = () => choose("right");
+document.getElementById("startBtn").onclick = startGame;
+document.getElementById("restartBtn").onclick = startGame;
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") choose("left");
+  if (e.key === "ArrowRight") choose("right");
+});
+</script>
+</body>
+</html>
