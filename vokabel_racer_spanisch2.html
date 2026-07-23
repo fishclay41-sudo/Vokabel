@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vokabel-Kugel – Spanisch</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+    touch-action: none;
+    user-select: none;
+  }
+  body { background: linear-gradient(#41a5ff 0%, #bfe7ff 62%, #e9f7ff 100%); }
+  #game { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  .horizon {
+    position: absolute; top: 6%; left: 0; right: 0; height: 18px;
+    background: #347a23; box-shadow: 0 4px 0 rgba(0,0,0,.18);
+  }
+  .road {
+    position: absolute; left: 50%; top: 5%; width: 74%; height: 110%;
+    transform: translateX(-50%);
+    clip-path: polygon(43% 0, 57% 0, 100% 100%, 0 100%);
+    background:
+      linear-gradient(90deg, transparent 49.4%, rgba(255,255,255,.6) 49.4%, rgba(255,255,255,.6) 50.6%, transparent 50.6%),
+      linear-gradient(#f7f7f7,#fff);
+  }
+  .rail {
+    position: absolute; top: 6%; bottom: -5%; width: 5px; background: #64707b;
+    box-shadow: 0 0 0 2px #8f99a5; transform-origin: top;
+  }
+  .rail.left { left: 29%; transform: rotate(18deg); }
+  .rail.right { right: 29%; transform: rotate(-18deg); }
+
+  .hud {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 18px; align-items: center; z-index: 30;
+  }
+  .badge {
+    background: linear-gradient(#6a7d97,#35445a); color: #fff;
+    border: 3px solid rgba(255,255,255,.35); border-radius: 14px;
+    padding: 10px 18px; font-weight: 900; font-size: clamp(18px,2vw,30px);
+    text-shadow: 0 2px 0 #000; box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  }
+  #money { min-width: 160px; text-align: center; color: #ffd24d; }
+  .moneyIcon { font-size: clamp(28px,4vw,50px); }
+
+  .questionBox {
+    position: absolute; top: 14%; left: 50%; transform: translateX(-50%);
+    z-index: 20; width: min(760px, 88vw); text-align: center;
+    background: rgba(255,255,255,.94); border: 4px solid #465b74; border-radius: 18px;
+    padding: 13px 20px; box-shadow: 0 8px 25px rgba(0,0,0,.25);
+  }
+  .questionBox small { color: #465b74; font-weight: 800; }
+  #question { font-size: clamp(22px,3.4vw,42px); font-weight: 900; margin-top: 4px; }
+
+  .timerWrap {
+    position: absolute; top: calc(14% + 118px); left: 50%; transform: translateX(-50%);
+    width: min(650px, 78vw); height: 16px; background: rgba(255,255,255,.78);
+    border: 3px solid #465b74; border-radius: 12px; z-index: 21; overflow: hidden;
+  }
+  #timerBar {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg,#44d661,#ffe259,#ff5c5c);
+    transform-origin: left center;
+  }
+
+  .gate {
+    position: absolute; top: 38%; width: 29%; min-height: 145px; z-index: 15;
+    border: 4px solid rgba(255,255,255,.9); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 18px; font-size: clamp(18px,2.5vw,34px); font-weight: 900;
+    color: #15202a; box-shadow: 0 8px 20px rgba(0,0,0,.18);
+    transition: transform .2s, filter .2s, opacity .25s, top .08s linear, left .2s, right .2s;
+  }
+  .gate.left { left: 20%; background: linear-gradient(#dff2ff,#78c8ff); }
+  .gate.right { right: 20%; background: linear-gradient(#ffe3e0,#ff9990); }
+  .gate.correct { background: linear-gradient(#d9ffd8,#65dc69) !important; }
+  .gate.wrong { background: linear-gradient(#ffd9d9,#ff5f5f) !important; }
+
+  .ball {
+    position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%);
+    z-index: 25; width: clamp(62px,8vw,105px); aspect-ratio: 1; border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, #ffffff 0 8%, #8ee5ff 10%, #1f8fd0 38%, #0f4a84 70%, #062a51 100%);
+    box-shadow: 0 14px 18px rgba(0,0,0,.28), inset -12px -16px 18px rgba(0,0,0,.2);
+    transition: left .22s ease, bottom .6s ease-in, transform .2s ease;
+  }
+  .ball::after {
+    content: ""; position: absolute; left: 18%; right: 18%; bottom: -18px; height: 16px;
+    border-radius: 50%; background: rgba(0,0,0,.18); filter: blur(3px);
+  }
+  .ball.roll { animation: roll .35s linear infinite; }
+  @keyframes roll {
+    from { transform: translateX(-50%) rotate(0deg); }
+    to { transform: translateX(-50%) rotate(360deg); }
+  }
+
+  #feedback {
+    position: absolute; top: 64%; left: 50%; transform: translateX(-50%);
+    z-index: 40; font-size: clamp(28px,5vw,62px); font-weight: 1000;
+    text-shadow: 0 4px 0 #fff, 0 7px 8px rgba(0,0,0,.25);
+    opacity: 0; transition: opacity .15s, transform .2s;
+  }
+  #feedback.show { opacity: 1; transform: translateX(-50%) scale(1.08); }
+
+  .controls {
+    position: absolute; left: 50%; bottom: 2.5%; transform: translateX(-50%);
+    z-index: 35; display: flex; gap: 18px;
+  }
+  button {
+    border: 0; border-radius: 16px; padding: 13px 22px;
+    font-size: clamp(17px,2vw,24px); font-weight: 900; cursor: pointer;
+    box-shadow: 0 6px 0 rgba(0,0,0,.25);
+  }
+  button:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  #leftBtn { background: #56bfff; }
+  #rightBtn { background: #ff7f76; }
+
+  .progress {
+    position: absolute; bottom: 10px; left: 10px; width: 230px; height: 24px;
+    background: rgba(255,255,255,.7); border: 3px solid #3b4a5e;
+    border-radius: 12px; overflow: hidden; z-index: 35;
+  }
+  #progressBar { height: 100%; width: 0%; background: linear-gradient(90deg,#41d95d,#b4f35f); transition: width .3s; }
+  .hint {
+    position:absolute; right: 14px; bottom: 12px; z-index:35; font-weight:700;
+    color:#26364a; background:rgba(255,255,255,.72); padding:7px 11px; border-radius:10px;
+  }
+
+  .overlay {
+    position: absolute; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    background: rgba(16,39,71,.72);
+  }
+  .panel {
+    width: min(580px, 90vw); background: white; border-radius: 24px; padding: 28px;
+    text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .panel h1 { margin: 0 0 10px; font-size: clamp(30px,5vw,55px); }
+  .panel p { font-size: 19px; line-height: 1.45; }
+  #startBtn, #restartBtn { background: #49d665; font-size: 25px; }
+  .hidden { display: none; }
+
+  @media (max-width: 700px) {
+    .questionBox { top: 12%; }
+    .timerWrap { top: calc(12% + 112px); }
+    .gate { top: 38%; width: 40%; min-height: 120px; padding: 10px; }
+    .gate.left { left: 7%; }
+    .gate.right { right: 7%; }
+    .rail.left { left: 18%; }
+    .rail.right { right: 18%; }
+    .ball { bottom: 17%; }
+    .controls { bottom: 5%; }
+    .progress { width: 145px; height: 20px; }
+    .hint { display:none; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="horizon"></div>
+  <div class="road"></div>
+  <div class="rail left"></div>
+  <div class="rail right"></div>
+
+  <div class="hud">
+    <div class="badge" id="level">LEVEL 1</div>
+    <div class="badge" id="money">0 €</div>
+    <div class="moneyIcon">💵</div>
+  </div>
+
+  <div class="questionBox">
+    <small>WISCHE ODER LENKE ZUR RICHTIGEN ÜBERSETZUNG</small>
+    <div id="question">el tiempo libre</div>
+  </div>
+  <div class="timerWrap"><div id="timerBar"></div></div>
+
+  <div class="gate left" id="leftGate"></div>
+  <div class="gate right" id="rightGate"></div>
+
+  <div class="ball" id="ball"></div>
+  <div id="feedback"></div>
+
+  <div class="controls">
+    <button id="leftBtn">⬅ LINKS</button>
+    <button id="rightBtn">RECHTS ➡</button>
+  </div>
+
+  <div class="progress"><div id="progressBar"></div></div>
+  <div class="hint">Wischen, tippen oder ← →</div>
+
+  <div class="overlay" id="startOverlay">
+    <div class="panel">
+      <h1>🔵 Vokabel-Kugel</h1>
+      <p>Die Kugel fährt langsam auf die Antworten zu. Wische nach links oder rechts, tippe auf eine Seite oder benutze die Pfeiltasten.</p>
+      <p>Du hast nur wenige Sekunden. Wenn die Zeit abläuft, zählt die Antwort als falsch.</p>
+      <button id="startBtn">SPIEL STARTEN</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="endOverlay">
+    <div class="panel">
+      <h1 id="endTitle">Ziel erreicht!</h1>
+      <p id="endText"></p>
+      <button id="restartBtn">NOCHMAL SPIELEN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const vocab = [
+  ["español / española", "spanisch"],
+  ["el tiempo libre", "die Freizeit"],
+  ["el tiempo", "die Zeit / das Wetter"],
+  ["libre", "frei"],
+  ["salir", "ausgehen"],
+  ["escuchar algo / a alguien", "etwas / jemandem zuhören"],
+  ["la música", "die Musik"],
+  ["viajar", "reisen"],
+  ["usar algo", "etwas benutzen"],
+  ["ver algo / a alguien", "etwas / jemanden sehen"],
+  ["la televisión", "der Fernseher"],
+  ["el concierto", "das Konzert"],
+  ["la radio", "das Radio"],
+  ["el bar", "die Bar / Kneipe"],
+  ["el periódico", "die Zeitung"],
+  ["la revista", "die Zeitschrift"],
+  ["la exposición", "die Ausstellung"],
+  ["jugar con / a algo", "mit etwas spielen"],
+  ["el videojuego", "das Videospiel"],
+  ["a mí me gusta", "mir gefällt / ich mag"],
+  ["no me gusta nada", "ich mag überhaupt nicht"],
+  ["¿te gusta...?", "magst du ...?"],
+  ["a mí también", "ich auch"],
+  ["tampoco", "auch nicht"],
+  ["el fútbol", "Fußball"],
+  ["los domingos", "sonntags"],
+  ["tocar un instrumento", "ein Instrument spielen"],
+  ["la guitarra", "die Gitarre"],
+  ["ir al cine", "ins Kino gehen"],
+  ["hacer deporte", "Sport machen"]
+];
+
+const ROUND_TIME = 6500;
+let questions = [];
+let index = 0;
+let money = 0;
+let locked = false;
+let correctSide = "left";
+let roundStart = 0;
+let animationFrame = null;
+let touchStartX = 0;
+let touchStartY = 0;
+
+const game = document.getElementById("game");
+const qEl = document.getElementById("question");
+const leftGate = document.getElementById("leftGate");
+const rightGate = document.getElementById("rightGate");
+const ball = document.getElementById("ball");
+const feedback = document.getElementById("feedback");
+const moneyEl = document.getElementById("money");
+const levelEl = document.getElementById("level");
+const progressBar = document.getElementById("progressBar");
+const timerBar = document.getElementById("timerBar");
+
+function shuffle(a) { return [...a].sort(() => Math.random() - 0.5); }
+
+function startGame() {
+  questions = shuffle(vocab).slice(0, 15);
+  index = 0; money = 0; locked = false;
+  document.getElementById("startOverlay").classList.add("hidden");
+  document.getElementById("endOverlay").classList.add("hidden");
+  updateHud();
+  loadQuestion();
+}
+
+function updateHud() {
+  moneyEl.textContent = money.toLocaleString("de-DE") + " €";
+  levelEl.textContent = "LEVEL " + (Math.floor(index / 5) + 1);
+  progressBar.style.width = (index / questions.length * 100) + "%";
+}
+
+function randomWrong(correct) {
+  const choices = vocab.map(v => v[1]).filter(x => x !== correct);
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+
+function loadQuestion() {
+  cancelAnimationFrame(animationFrame);
+  locked = false;
+  ball.classList.add("roll");
+  ball.style.left = "50%";
+  ball.style.bottom = window.innerWidth <= 700 ? "17%" : "12%";
+  leftGate.className = "gate left";
+  rightGate.className = "gate right";
+  leftGate.style.top = window.innerWidth <= 700 ? "38%" : "38%";
+  rightGate.style.top = window.innerWidth <= 700 ? "38%" : "38%";
+
+  const [spanish, german] = questions[index];
+  qEl.textContent = spanish;
+  const wrong = randomWrong(german);
+  correctSide = Math.random() < .5 ? "left" : "right";
+  if (correctSide === "left") {
+    leftGate.textContent = german;
+    rightGate.textContent = wrong;
+  } else {
+    leftGate.textContent = wrong;
+    rightGate.textContent = german;
+  }
+
+  roundStart = performance.now();
+  animateApproach();
+}
+
+function animateApproach(now = performance.now()) {
+  if (locked) return;
+  const elapsed = now - roundStart;
+  const progress = Math.min(elapsed / ROUND_TIME, 1);
+
+  timerBar.style.transform = `scaleX(${1 - progress})`;
+
+  const startTop = 38;
+  const endTop = 58;
+  const currentTop = startTop + (endTop - startTop) * progress;
+  leftGate.style.top = currentTop + "%";
+  rightGate.style.top = currentTop + "%";
+
+  const startBottom = window.innerWidth <= 700 ? 17 : 12;
+  const endBottom = 39;
+  const currentBottom = startBottom + (endBottom - startBottom) * progress;
+  ball.style.bottom = currentBottom + "%";
+
+  if (progress >= 1) {
+    timeoutAnswer();
+    return;
+  }
+  animationFrame = requestAnimationFrame(animateApproach);
+}
+
+function choose(side) {
+  if (locked) return;
+  locked = true;
+  cancelAnimationFrame(animationFrame);
+
+  ball.style.left = side === "left" ? "36%" : "64%";
+  ball.style.bottom = "53%";
+
+  setTimeout(() => {
+    const isCorrect = side === correctSide;
+    if (isCorrect) {
+      money += 1000 + index * 250;
+      document.getElementById(side + "Gate").classList.add("correct");
+      showFeedback("✅ RICHTIG!", "#168c2d");
+    } else {
+      money = Math.max(0, money - 500);
+      document.getElementById(side + "Gate").classList.add("wrong");
+      document.getElementById(correctSide + "Gate").classList.add("correct");
+      showFeedback("❌ FALSCH!", "#cf2222");
+    }
+    updateHud();
+    setTimeout(nextQuestion, 950);
+  }, 580);
+}
+
+function timeoutAnswer() {
+  if (locked) return;
+  locked = true;
+  cancelAnimationFrame(animationFrame);
+  money = Math.max(0, money - 500);
+  ball.classList.remove("roll");
+  ball.style.bottom = "51%";
+  document.getElementById(correctSide + "Gate").classList.add("correct");
+  showFeedback("⏰ ZEIT ABGELAUFEN!", "#d07b00");
+  updateHud();
+  setTimeout(nextQuestion, 1100);
+}
+
+function showFeedback(text, color) {
+  feedback.textContent = text;
+  feedback.style.color = color;
+  feedback.classList.add("show");
+  setTimeout(() => feedback.classList.remove("show"), 800);
+}
+
+function nextQuestion() {
+  index++;
+  updateHud();
+  if (index >= questions.length) {
+    progressBar.style.width = "100%";
+    document.getElementById("endTitle").textContent = money >= 12000 ? "🏆 Super gerollt!" : "🏁 Ziel erreicht!";
+    document.getElementById("endText").innerHTML =
+      `Du hast <b>${money.toLocaleString("de-DE")} €</b> gesammelt.<br><br>` +
+      (money >= 12000 ? "Sehr stark – deine Vokabeln sitzen!" : "Noch eine Runde und du wirst schneller!");
+    document.getElementById("endOverlay").classList.remove("hidden");
+  } else {
+    loadQuestion();
+  }
+}
+
+document.getElementById("leftBtn").onclick = () => choose("left");
+document.getElementById("rightBtn").onclick = () => choose("right");
+leftGate.onclick = () => choose("left");
+rightGate.onclick = () => choose("right");
+document.getElementById("startBtn").onclick = startGame;
+document.getElementById("restartBtn").onclick = startGame;
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") choose("left");
+  if (e.key === "ArrowRight") choose("right");
+});
+
+game.addEventListener("touchstart", e => {
+  const t = e.changedTouches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+}, { passive: true });
+
+game.addEventListener("touchend", e => {
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+    choose(dx < 0 ? "left" : "right");
+  }
+}, { passive: true });
+</script>
+</body>
+</html>
