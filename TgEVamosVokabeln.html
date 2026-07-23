@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vokabel-Laufband</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;touch-action:none;user-select:none}
+body{background:linear-gradient(#49aaff 0%,#bce7ff 68%,#eefaff 100%)}
+#game{position:relative;width:100vw;height:100vh;overflow:hidden}
+.horizon{position:absolute;top:7%;left:0;right:0;height:18px;background:#2d7b24;box-shadow:0 5px 0 rgba(0,0,0,.14)}
+.road{
+ position:absolute;left:50%;top:6%;width:78%;height:112%;transform:translateX(-50%);
+ clip-path:polygon(44% 0,56% 0,100% 100%,0 100%);
+ background:#fafafa;overflow:hidden
+}
+.belt-lines{
+ position:absolute;inset:-120px 0 0;
+ background:repeating-linear-gradient(0deg,transparent 0 78px,rgba(190,198,205,.45) 78px 84px);
+ animation:beltMove 1.8s linear infinite
+}
+@keyframes beltMove{from{transform:translateY(-84px)}to{transform:translateY(0)}}
+.center-line{position:absolute;left:49.6%;top:0;bottom:0;width:.8%;background:rgba(210,215,220,.75)}
+.rail{position:absolute;top:7%;bottom:-8%;width:6px;background:#68737e;box-shadow:0 0 0 2px #9aa3ad;transform-origin:top}
+.rail.left{left:28.5%;transform:rotate(18deg)}
+.rail.right{right:28.5%;transform:rotate(-18deg)}
+.hud{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:50}
+.badge{background:linear-gradient(#71859f,#35455c);color:#fff;border:3px solid rgba(255,255,255,.35);border-radius:16px;padding:10px 24px;font-size:clamp(19px,2.2vw,31px);font-weight:900;text-shadow:0 2px 0 #000;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.questionBox{position:absolute;top:14%;left:50%;transform:translateX(-50%);z-index:45;width:min(760px,88vw);background:rgba(255,255,255,.96);border:4px solid #465b74;border-radius:20px;text-align:center;padding:13px 20px;box-shadow:0 10px 28px rgba(0,0,0,.25)}
+.questionBox small{font-weight:900;color:#4d617b}
+#question{font-size:clamp(24px,3.8vw,48px);font-weight:1000;margin-top:3px}
+.timer{position:absolute;top:calc(14% + 120px);left:50%;transform:translateX(-50%);z-index:46;width:min(650px,76vw);height:15px;background:rgba(255,255,255,.82);border:3px solid #465b74;border-radius:10px;overflow:hidden}
+#timerBar{height:100%;width:100%;transform-origin:left;background:linear-gradient(90deg,#45d75f,#f0da45,#ff5c5c)}
+.answer-row{position:absolute;left:50%;top:28%;transform:translateX(-50%) scale(.42);width:min(920px,80vw);height:175px;z-index:25;display:flex;gap:34px;pointer-events:none;opacity:.55;will-change:top,transform,opacity}
+.gate{position:relative;flex:1;border:5px solid rgba(255,255,255,.96);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:clamp(20px,2.5vw,36px);font-weight:1000;color:#17212a;box-shadow:0 12px 28px rgba(0,0,0,.22);overflow:hidden}
+.gate.left{background:linear-gradient(#e0f3ff,#74c8ff)}
+.gate.right{background:linear-gradient(#ffe4e1,#ff958d)}
+.gate.correct{background:linear-gradient(#dcffdc,#62dc6d)!important}
+.gate.wrong{background:linear-gradient(#ffd9d9,#ff5b5b)!important}
+.gate.breaking{animation:breakGate .26s ease forwards}
+@keyframes breakGate{0%{transform:scale(1);opacity:1}100%{transform:scale(1.18);opacity:0}}
+.ball{position:absolute;left:38%;bottom:11%;transform:translateX(-50%);z-index:35;width:clamp(68px,8vw,112px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 32% 27%,#fff 0 7%,#8be8ff 9%,#1f9cda 35%,#0e5a98 66%,#062e58 100%);box-shadow:0 16px 22px rgba(0,0,0,.28),inset -14px -18px 20px rgba(0,0,0,.2);transition:left .2s ease,bottom .18s ease,transform .18s ease}
+.ball::after{content:"";position:absolute;left:17%;right:17%;bottom:-19px;height:16px;border-radius:50%;background:rgba(0,0,0,.2);filter:blur(4px)}
+.ball.rolling{animation:roll .46s linear infinite}
+.ball.hit{animation:hitPulse .28s ease}
+@keyframes roll{from{transform:translateX(-50%) rotate(0deg)}to{transform:translateX(-50%) rotate(360deg)}}
+@keyframes hitPulse{50%{transform:translateX(-50%) scale(1.2)}}
+.particle{position:absolute;z-index:80;width:18px;height:18px;border-radius:3px;pointer-events:none;animation:fly .72s cubic-bezier(.15,.65,.25,1) forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+#feedback{position:absolute;left:50%;top:63%;transform:translateX(-50%);z-index:90;font-size:clamp(30px,5vw,64px);font-weight:1000;text-shadow:0 4px 0 #fff,0 8px 10px rgba(0,0,0,.25);opacity:0}
+#feedback.show{animation:feedback .8s ease}
+@keyframes feedback{0%{opacity:0;transform:translateX(-50%) scale(.7)}20%,72%{opacity:1;transform:translateX(-50%) scale(1.05)}100%{opacity:0}}
+.progress{position:absolute;left:12px;bottom:12px;width:220px;height:22px;border:3px solid #3b4a5e;background:rgba(255,255,255,.76);border-radius:12px;overflow:hidden;z-index:50}
+#progressBar{height:100%;width:0;background:linear-gradient(90deg,#40d85c,#b4f25d)}
+.hint{position:absolute;right:14px;bottom:12px;z-index:50;background:rgba(255,255,255,.76);padding:8px 12px;border-radius:11px;font-weight:800;color:#2d3c50}
+.overlay{position:absolute;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;background:rgba(18,39,70,.76)}
+.panel{width:min(590px,90vw);background:white;border-radius:25px;padding:30px;text-align:center;box-shadow:0 22px 65px rgba(0,0,0,.36)}
+.panel h1{margin:0 0 10px;font-size:clamp(31px,5vw,56px)}
+.panel p{font-size:19px;line-height:1.5}
+button{border:0;border-radius:16px;padding:14px 28px;background:#4bd667;font-size:25px;font-weight:1000;box-shadow:0 6px 0 rgba(0,0,0,.24);cursor:pointer}
+button:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.24)}
+.hidden{display:none}
+@media(max-width:700px){
+ .questionBox{top:12%}.timer{top:calc(12% + 112px)}
+ .answer-row{width:88vw;height:145px;gap:18px}
+ .gate{padding:10px;font-size:clamp(18px,4.8vw,28px)}
+ .rail.left{left:18%}.rail.right{right:18%}
+ .ball{bottom:13%}.progress{width:145px;height:19px}.hint{display:none}
+}
+</style>
+</head>
+<body>
+<div id="game">
+ <div class="horizon"></div>
+ <div class="road"><div class="belt-lines"></div><div class="center-line"></div></div>
+ <div class="rail left"></div><div class="rail right"></div>
+
+ <div class="hud"><div class="badge" id="level">LEVEL 1</div></div>
+
+ <div class="questionBox">
+   <small>WISCHE ZUR RICHTIGEN ÜBERSETZUNG</small>
+   <div id="question">el tiempo libre</div>
+ </div>
+ <div class="timer"><div id="timerBar"></div></div>
+
+ <div class="answer-row" id="answerRow">
+   <div class="gate left" id="leftGate"></div>
+   <div class="gate right" id="rightGate"></div>
+ </div>
+
+ <div class="ball rolling" id="ball"></div>
+ <div id="feedback"></div>
+
+ <div class="progress"><div id="progressBar"></div></div>
+ <div class="hint">Wischen, tippen oder ← →</div>
+
+ <div class="overlay" id="startOverlay">
+   <div class="panel">
+     <h1>🔵 Vokabel-Laufband</h1>
+     <p>Die Antworten fahren langsam auf dich zu. Lenke die Kugel in die richtige Spur.</p>
+     <p><b>Eine falsche Antwort beendet die Runde sofort.</b></p>
+     <button id="startBtn">STARTEN</button>
+   </div>
+ </div>
+
+ <div class="overlay hidden" id="gameOverOverlay">
+   <div class="panel">
+     <h1>💥 Falsch!</h1>
+     <p>Du musst wieder von vorne anfangen.</p>
+     <button id="againBtn">STARTEN</button>
+   </div>
+ </div>
+
+ <div class="overlay hidden" id="winOverlay">
+   <div class="panel">
+     <h1>🏆 Geschafft!</h1>
+     <p>Du hast alle Vokabeln richtig beantwortet.</p>
+     <button id="restartBtn">STARTEN</button>
+   </div>
+ </div>
+</div>
+
+<script>
+const vocab=[
+["español / española","spanisch"],["el tiempo libre","die Freizeit"],["el tiempo","die Zeit / das Wetter"],
+["libre","frei"],["salir","ausgehen"],["escuchar algo / a alguien","etwas / jemandem zuhören"],
+["la música","die Musik"],["viajar","reisen"],["usar algo","etwas benutzen"],
+["ver algo / a alguien","etwas / jemanden sehen"],["la televisión","der Fernseher"],
+["el concierto","das Konzert"],["la radio","das Radio"],["el bar","die Bar / Kneipe"],
+["el periódico","die Zeitung"],["la revista","die Zeitschrift"],["la exposición","die Ausstellung"],
+["jugar con / a algo","mit etwas spielen"],["el videojuego","das Videospiel"],
+["a mí me gusta","mir gefällt / ich mag"],["no me gusta nada","ich mag überhaupt nicht"],
+["¿te gusta...?","magst du ...?"],["a mí también","ich auch"],["tampoco","auch nicht"],
+["el fútbol","Fußball"],["los domingos","sonntags"],["tocar un instrumento","ein Instrument spielen"],
+["la guitarra","die Gitarre"],["ir al cine","ins Kino gehen"],["hacer deporte","Sport machen"]
+];
+
+const ROUND_TIME=7200;
+let questions=[],index=0,locked=false,correctSide="left",selectedSide="left";
+let roundStart=0,raf=null,startX=0,startY=0;
+
+const game=document.getElementById("game");
+const row=document.getElementById("answerRow");
+const ball=document.getElementById("ball");
+const leftGate=document.getElementById("leftGate");
+const rightGate=document.getElementById("rightGate");
+const timerBar=document.getElementById("timerBar");
+const feedback=document.getElementById("feedback");
+
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+
+function similarWrong(correct){
+ const words=correct.toLowerCase().split(/\s+/);
+ const scored=vocab
+   .map(v=>v[1])
+   .filter(x=>x!==correct)
+   .map(x=>{
+     const lw=x.toLowerCase();
+     let score=0;
+     if(Math.abs(x.length-correct.length)<=4)score+=3;
+     if(words.some(w=>w.length>3&&lw.includes(w)))score+=4;
+     if((correct.includes("nicht")&&x.includes("nicht"))||(correct.includes("spielen")&&x.includes("spielen"))||(correct.includes("die ")&&x.includes("die ")))score+=3;
+     if(x.split(/\s+/).length===correct.split(/\s+/).length)score+=2;
+     return {x,score:score+Math.random()*2};
+   })
+   .sort((a,b)=>b.score-a.score);
+ return scored[0].x;
+}
+
+function startGame(){
+ questions=shuffle(vocab).slice(0,15);index=0;
+ document.getElementById("startOverlay").classList.add("hidden");
+ document.getElementById("gameOverOverlay").classList.add("hidden");
+ document.getElementById("winOverlay").classList.add("hidden");
+ updateHud();loadQuestion();
+}
+
+function updateHud(){
+ document.getElementById("level").textContent="LEVEL "+(Math.floor(index/5)+1);
+ document.getElementById("progressBar").style.width=(index/questions.length*100)+"%";
+}
+
+function setLane(side){
+ if(locked)return;
+ selectedSide=side;
+ ball.style.left=side==="left"?"38%":"62%";
+}
+
+function loadQuestion(){
+ cancelAnimationFrame(raf);locked=false;
+ selectedSide=Math.random()<.5?"left":"right";
+ ball.style.left=selectedSide==="left"?"38%":"62%";
+ ball.style.bottom=innerWidth<=700?"13%":"11%";
+ ball.classList.add("rolling");
+ row.style.top="28%";
+ row.style.transform="translateX(-50%) scale(.42)";
+ row.style.opacity=".55";
+ leftGate.className="gate left";rightGate.className="gate right";
+
+ const [spanish,german]=questions[index];
+ document.getElementById("question").textContent=spanish;
+ const wrong=similarWrong(german);
+ correctSide=Math.random()<.5?"left":"right";
+
+ if(correctSide==="left"){leftGate.textContent=german;rightGate.textContent=wrong}
+ else{leftGate.textContent=wrong;rightGate.textContent=german}
+
+ roundStart=performance.now();
+ raf=requestAnimationFrame(animateBelt);
+}
+
+function animateBelt(now){
+ if(locked)return;
+ const p=Math.min((now-roundStart)/ROUND_TIME,1);
+ timerBar.style.transform=`scaleX(${1-p})`;
+
+ const eased=p*p*(3-2*p);
+ const top=28+39*eased;
+ const scale=.42+.66*eased;
+ row.style.top=top+"%";
+ row.style.transform=`translateX(-50%) scale(${scale})`;
+ row.style.opacity=.55+.45*eased;
+
+ if(p>=1){collide();return}
+ raf=requestAnimationFrame(animateBelt);
+}
+
+function collide(){
+ if(locked)return;
+ locked=true;cancelAnimationFrame(raf);
+
+ const chosen=selectedSide==="left"?leftGate:rightGate;
+ const isCorrect=selectedSide===correctSide;
+
+ ball.classList.add("hit");
+ chosen.classList.add(isCorrect?"correct":"wrong");
+ shatter(chosen,selectedSide,isCorrect);
+
+ setTimeout(()=>ball.classList.remove("hit"),300);
+
+ if(isCorrect){
+   showFeedback("✅ RICHTIG!","#168c2d");
+   setTimeout(()=>{
+     index++;
+     updateHud();
+     if(index>=questions.length){
+       document.getElementById("progressBar").style.width="100%";
+       document.getElementById("winOverlay").classList.remove("hidden");
+     }else{
+       loadQuestion();
+     }
+   },900);
+ }else{
+   showFeedback("❌ FALSCH!","#cf2222");
+   setTimeout(()=>{
+     document.getElementById("gameOverOverlay").classList.remove("hidden");
+   },900);
+ }
+}
+
+function shatter(el,side,isCorrect){
+ const r=el.getBoundingClientRect();
+ const colors=isCorrect?["#6ee17a","#baffbf","#ffffff"]:(side==="left"?["#72c9ff","#bfeaff","#ffffff"]:["#ff9189","#ffc1bd","#ffffff"]);
+ el.classList.add("breaking");
+
+ for(let i=0;i<42;i++){
+   const p=document.createElement("div");
+   p.className="particle";
+   p.style.left=(r.left+r.width/2+(Math.random()-.5)*r.width*.78)+"px";
+   p.style.top=(r.top+r.height/2+(Math.random()-.5)*r.height*.78)+"px";
+   p.style.width=(8+Math.random()*18)+"px";
+   p.style.height=(8+Math.random()*18)+"px";
+   p.style.background=colors[Math.floor(Math.random()*colors.length)];
+   p.style.setProperty("--dx",((Math.random()-.5)*360)+"px");
+   p.style.setProperty("--dy",((-80-Math.random()*300))+"px");
+   p.style.setProperty("--rot",((Math.random()*1000-500)+"deg"));
+   game.appendChild(p);
+   setTimeout(()=>p.remove(),760);
+ }
+}
+
+function showFeedback(text,color){
+ feedback.textContent=text;feedback.style.color=color;
+ feedback.classList.remove("show");void feedback.offsetWidth;feedback.classList.add("show");
+}
+
+document.getElementById("startBtn").addEventListener("click",startGame);
+document.getElementById("againBtn").addEventListener("click",startGame);
+document.getElementById("restartBtn").addEventListener("click",startGame);
+
+document.addEventListener("keydown",e=>{
+ if(e.key==="ArrowLeft")setLane("left");
+ if(e.key==="ArrowRight")setLane("right");
+});
+
+game.addEventListener("pointerdown",e=>{startX=e.clientX;startY=e.clientY});
+game.addEventListener("pointerup",e=>{
+ const dx=e.clientX-startX,dy=e.clientY-startY;
+ if(Math.abs(dx)>35&&Math.abs(dx)>Math.abs(dy))setLane(dx<0?"left":"right");
+ else setLane(e.clientX<innerWidth/2?"left":"right");
+});
+</script>
+</body>
+</html>
